@@ -10,45 +10,41 @@ hourly <- read.csv(x, sep=";", quote="\"", dec="," ,
 # Gera coluna com datetime
 hourly$date <- as.POSIXct(hourly[,c(1)], format="%d/%m/%Y %H:%M")
 # TODO: fazer verificação de data sequencia de faltando?
-
-NO_VALUE <- -99
 # Extrai precipitacao
 hourly$precip <- hourly[,c(2)]
+# Extrai Temperatura
+hourly$temp <- hourly[,c(3)]
+# Extrai velocidade do vento
+hourly$wind <- hourly[,c(4)]
+# Extrai radiacao solar
+hourly$radiance <- hourly[,c(5)]
+# Extrai umidade
+hourly$humid <- hourly[,c(6)]
+# Extrai pressão atmosferica
+hourly$pressure <- hourly[,c(7)]
+
+
+# TODO: Verificar por -99 ou valores fora da faixa. 
+NO_VALUE <- -99
 if (any(hourly$precip == NO_VALUE)) {
   print("AVISO: NO_VALUE encontrado em precipitacao")
 }
-
-# Extrai Temperatura
-hourly$temp <- hourly[,c(3)]
 if (any(hourly$temp == NO_VALUE)) {
   print("AVISO: NO_VALUE encontrado em temperatura")
 }
-# Extrai velocidade do vento
-hourly$wind <- hourly[,c(4)]
 if (any(hourly$wind == NO_VALUE)) {
   print("AVISO: NO_VALUE encontrado em velocidade de vento")
 }
-
-# Extrai radiacao solar
-hourly$radiance <- hourly[,c(5)]
 if (any(hourly$radiance == NO_VALUE)) {
   print("AVISO: NO_VALUE encontrado em radiancia")
 }
-
-# Extrai umidade
-hourly$humid <- hourly[,c(6)]
 if (any(hourly$humid == NO_VALUE)) {
   print("AVISO: NO_VALUE encontrado em humidade")
 }
-
-# Extrai pressão atmosferica
-hourly$pressure <- hourly[,c(7)]
 if (any(hourly$pressure == NO_VALUE)) {
   print("AVISO: NO_VALUE encontrado em pressao")
 }
 
-# TODO: Verificar por -99 ou valores fora da faixa
-# TODO: adicionar outras variaveis
 
 # Converte de horario para diario
 daily = data.frame()
