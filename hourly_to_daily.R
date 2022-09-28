@@ -1,52 +1,72 @@
 # Converte de horario para diário
 
+library("dplyr")
+
 # Abre arquivo
 x = "./Data/Precipitation/dados_meterologicos_horario.csv"
-hourly <- read.csv(x, sep=";", quote="\"", dec="," ,
+print(paste("Lendo arquivo", x))
+#hourly <- read.csv(x, sep=";", quote="\"", dec="," ,
+data <- read.csv(x, sep=";", quote="\"", dec="," ,
                  header = TRUE, skip = 2, fileEncoding="utf-8")
 
 
 ## Extrai dados das colunas
 # Gera coluna com datetime
-hourly$date <- as.POSIXct(hourly[,c(1)], format="%d/%m/%Y %H:%M")
-# TODO: fazer verificação de data sequencia de faltando?
+hourly <- data.frame(date = as.POSIXct(data[,c(1)], format="%d/%m/%Y %H:%M"))
 # Extrai precipitacao
-hourly$precip <- hourly[,c(2)]
+hourly$precip <- data[,c(2)]
 # Extrai Temperatura
-hourly$temp <- hourly[,c(3)]
+hourly$temp <- data[,c(3)]
 # Extrai velocidade do vento
-hourly$wind <- hourly[,c(4)]
+hourly$wind <- data[,c(4)]
 # Extrai radiacao solar
-hourly$radiance <- hourly[,c(5)]
+hourly$radiance <- data[,c(5)]
 # Extrai umidade
-hourly$humid <- hourly[,c(6)]
+hourly$humid <- data[,c(6)]
 # Extrai pressão atmosferica
-hourly$pressure <- hourly[,c(7)]
+hourly$pressure <- data[,c(7)]
+
+# TODO: verificar se datas são sequenciais e corretas
+
+# Valor de NO_DATA - dado indisponivel.
+NO_DATA <- -99
+# Substitui NO_DATA por NA
+hourly[hourly==NO_DATA] <- NA
 
 
-# TODO: Verificar por -99 ou valores fora da faixa. 
-NO_VALUE <- -99
-if (any(hourly$precip == NO_VALUE)) {
-  print("AVISO: NO_VALUE encontrado em precipitacao")
+in_range <- function(df, index,  min_val, max_val, error_string) {
+  e = which(between(df, min_val, max_val) == FALSE)
+  if (any(e)) {
+    print(error_string)
+    print(data.frame(index = index[e], val = df[e]))
+    #print(df[e])
+    return(FALSE)
+  }
+  return(TRUE)
 }
-if (any(hourly$temp == NO_VALUE)) {
-  print("AVISO: NO_VALUE encontrado em temperatura")
-}
-if (any(hourly$wind == NO_VALUE)) {
-  print("AVISO: NO_VALUE encontrado em velocidade de vento")
-}
-if (any(hourly$radiance == NO_VALUE)) {
-  print("AVISO: NO_VALUE encontrado em radiancia")
-}
-if (any(hourly$humid == NO_VALUE)) {
-  print("AVISO: NO_VALUE encontrado em humidade")
-}
-if (any(hourly$pressure == NO_VALUE)) {
-  print("AVISO: NO_VALUE encontrado em pressao")
+
+# Verifica se valores estão dentro da faixa esperada
+# TODO: verificar qual é a faixa de valores para cada variavel
+out_of_range = FALSE
+out_of_range <- out_of_range | !in_range(hourly$precip, hourly$date, 0, 100, 
+         "AVISO: valor anormal encontrado em precipitacao:")
+out_of_range <- out_of_range | !in_range(hourly$wind, hourly$date, 0, 100,  
+         "AVISO: valor anormal encontrado em vento:")
+out_of_range <- out_of_range | !in_range(hourly$radiance, hourly$date, 0, 120,  
+         "AVISO: valor anormal encontrado em radiancia:")
+out_of_range <- out_of_range | !in_range(hourly$humid, hourly$date, 0, 100,  
+         "AVISO: valor anormal encontrado em humidade:")
+out_of_range <- out_of_range | !in_range(hourly$pressure, hourly$date, 0, 1100,  
+         "AVISO: valor anormal encontrado em pressao:")
+if (out_of_range) {
+  print("AVISO: dados de entrada fora da faixa esperada. Verifique dados.")
 }
 
 
 # Converte de horario para diario
+# TODO: verificar se resultados estao corretos. 
+# TODO: checar funcionamento com NA. Simplesmente ignora??
+print("Convertendo dados de horario para diario...")
 daily = data.frame()
 # precipitacao
 group <- list(date=as.POSIXct(trunc(hourly$date, "day")))
@@ -65,9 +85,14 @@ daily$humid <- aggregate(list(humid=hourly$humid),
 daily$pressure <- aggregate(list(pressure=hourly$pressure), 
                             FUN=mean, by=group)$pressure
 
-
+# Substitui NA por NO_DATA do SWAT
+# TODO: qual é o valor correto de NO_DATA para o SWAT?
+SWAT_NO_DATA = -999
+daily[is.na(daily)] <- SWAT_NO_DATA
 
 # Salva aquivo
-output_file = "./Data/output/dados_meterologicos_diario.csv"
-write.csv(daily,output_file, row.names = FALSE)
 # TODO: acertar formato correto para SWAT
+output_file = "./Data/output/dados_meterologicos_diario.csv"
+print(paste("Salvando arquivo", output_file))
+write.csv(daily,output_file, row.names = FALSE)
+
