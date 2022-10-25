@@ -10,6 +10,10 @@ NO_DATA <- -99
 # valor de NO_DATA para SWAT - Arquivo de saido
 SWAT_NO_DATA = -99
 
+# Numero maximo de NA onde o valor eh ignorado na estatistica de agrupamento
+# Acima disso resultado é NA
+N_MAX_NA = 5
+
 
 library("dplyr")
 
@@ -78,33 +82,45 @@ daily = data.frame()
 
 group <- list(date=as.POSIXct(trunc(hourly$date, "day")))
 
+n_fun <- function(f, n) {
+  function(x) {
+    if (sum(is.na(x)) > n) {
+      return(f(x, na.rm = FALSE))
+    } else {
+      return(f(x, na.rm = TRUE))
+    }
+  }
+}
+
+
+
 # precipitacao
 daily <- aggregate(list(precip=hourly$precip), 
-                   FUN=sum, by=group)
+                   FUN=n_fun(sum, N_MAX_NA), by=group)
 
 # temperatura max e min no dia
 #daily$temp <- aggregate(list(temp=hourly$temp), FUN=mean, by=group)$temp
 
 daily$temp_max <- aggregate(list(temp=hourly$temp), 
-                            FUN=max, by=group)$temp
+                            FUN=n_fun(max, N_MAX_NA), by=group)$temp
 
 daily$temp_min <- aggregate(list(temp=hourly$temp), 
-                            FUN=min, by=group)$temp
+                            FUN=n_fun(min, N_MAX_NA), by=group)$temp
 
 
 # vento media
-daily$wind <- aggregate(list(wind=hourly$wind), FUN=mean, by=group)$wind
+daily$wind <- aggregate(list(wind=hourly$wind), FUN=n_fun(mean, N_MAX_NA), by=group)$wind
 
 
 # radiancia soma
 daily$radiance <- aggregate(list(radiance=hourly$radiance), 
-                            FUN=sum, by=group)$radiance
+                            FUN=n_fun(sum, N_MAX_NA), by=group)$radiance
 # humidade média
 daily$humid <- aggregate(list(humid=hourly$humid), 
-                            FUN=mean, by=group)$humid
+                            FUN=n_fun(mean, N_MAX_NA), by=group)$humid
 # pressao média
 daily$pressure <- aggregate(list(pressure=hourly$pressure), 
-                            FUN=mean, by=group)$pressure
+                            FUN=n_fun(mean, N_MAX_NA), by=group)$pressure
 
 # Substitui NA por NO_DATA do SWAT
 daily[is.na(daily)] <- SWAT_NO_DATA
