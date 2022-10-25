@@ -1,12 +1,21 @@
 # Converte de horario para diário
 
+# Arquivos de entrada e saido
+
+INPUT_FILE = "./data/precipitation/dados_meterologicos_horario.csv"
+#INPUT_FILE = "./data/precipitation/test_horario.csv"
+OUTPUT_FILE = "./results/dados_meterologicos_diario.csv"
+# Valor de NO_DATA para arquivo de entrada
+NO_DATA <- -99
+# valor de NO_DATA para SWAT - Arquivo de saido
+SWAT_NO_DATA = -99
+
+
 library("dplyr")
 
 # Abre arquivo
-x = "./Data/Precipitation/dados_meterologicos_horario.csv"
-print(paste("Lendo arquivo", x))
-#hourly <- read.csv(x, sep=";", quote="\"", dec="," ,
-data <- read.csv(x, sep=";", quote="\"", dec="," ,
+print(paste("Lendo arquivo", INPUT_FILE))
+data <- read.csv(INPUT_FILE, sep=";", quote="\"", dec="," ,
                  header = TRUE, skip = 2, fileEncoding="utf-8")
 
 
@@ -28,8 +37,6 @@ hourly$pressure <- data[,c(7)]
 
 # TODO: verificar se datas são sequenciais e corretas
 
-# Valor de NO_DATA - dado indisponivel.
-NO_DATA <- -99
 # Substitui NO_DATA por NA
 hourly[hourly==NO_DATA] <- NA
 
@@ -50,7 +57,7 @@ in_range <- function(df, index,  min_val, max_val, error_string) {
 out_of_range = FALSE
 out_of_range <- out_of_range | !in_range(hourly$precip, hourly$date, 0, 100, 
          "AVISO: valor anormal encontrado em precipitacao:")
-out_of_range <- out_of_range | !in_range(hourly$wind, hourly$date, 0, 100,  
+out_of_range <- out_of_range | !in_range(hourly$wind, hourly$date, 0, 130,  
          "AVISO: valor anormal encontrado em vento:")
 out_of_range <- out_of_range | !in_range(hourly$radiance, hourly$date, 0, 120,  
          "AVISO: valor anormal encontrado em radiancia:")
@@ -68,31 +75,42 @@ if (out_of_range) {
 # TODO: checar funcionamento com NA. Simplesmente ignora??
 print("Convertendo dados de horario para diario...")
 daily = data.frame()
-# precipitacao
+
 group <- list(date=as.POSIXct(trunc(hourly$date, "day")))
-daily <- aggregate(list(precip=hourly$precip), FUN=sum, by=group)
-# temperatura
-daily$temp <- aggregate(list(temp=hourly$temp), FUN=mean, by=group)$temp
-# vento
+
+# precipitacao
+daily <- aggregate(list(precip=hourly$precip), 
+                   FUN=sum, by=group)
+
+# temperatura max e min no dia
+#daily$temp <- aggregate(list(temp=hourly$temp), FUN=mean, by=group)$temp
+
+daily$temp_max <- aggregate(list(temp=hourly$temp), 
+                            FUN=max, by=group)$temp
+
+daily$temp_min <- aggregate(list(temp=hourly$temp), 
+                            FUN=min, by=group)$temp
+
+
+# vento media
 daily$wind <- aggregate(list(wind=hourly$wind), FUN=mean, by=group)$wind
-# radiancia
+
+
+# radiancia soma
 daily$radiance <- aggregate(list(radiance=hourly$radiance), 
-                            FUN=mean, by=group)$radiance
-# humidade
+                            FUN=sum, by=group)$radiance
+# humidade média
 daily$humid <- aggregate(list(humid=hourly$humid), 
                             FUN=mean, by=group)$humid
-# pressao
+# pressao média
 daily$pressure <- aggregate(list(pressure=hourly$pressure), 
                             FUN=mean, by=group)$pressure
 
 # Substitui NA por NO_DATA do SWAT
-# TODO: qual é o valor correto de NO_DATA para o SWAT?
-SWAT_NO_DATA = -999
 daily[is.na(daily)] <- SWAT_NO_DATA
 
 # Salva aquivo
 # TODO: acertar formato correto para SWAT
-output_file = "./Data/output/dados_meterologicos_diario.csv"
-print(paste("Salvando arquivo", output_file))
-write.csv(daily,output_file, row.names = FALSE)
+print(paste("Salvando arquivo", OUTPUT_FILE))
+write.csv(daily,OUTPUT_FILE, row.names = FALSE)
 
